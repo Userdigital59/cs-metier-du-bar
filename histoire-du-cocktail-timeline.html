@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Histoire du cocktail — Frise interactive | CS Métiers du Bar</title>
+<style>
+:root{
+  --noir:#14110F;
+  --or:#C9A227;
+  --or-clair:#E3C766;
+  --blanc:#FFFFFF;
+  --rouge-err:#8B2E2E;
+  --vert-ok:#3E6B4F;
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
+html{scroll-behavior:smooth}
+body{
+  background:var(--noir);
+  color:var(--blanc);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+body::before{
+  content:"";
+  position:fixed; inset:0;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(201,162,39,0.10), transparent 40%),
+    radial-gradient(circle at 85% 90%, rgba(201,162,39,0.08), transparent 45%),
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 4px);
+  pointer-events:none;
+  z-index:0;
+}
+
+.stage{
+  position:relative;
+  z-index:1;
+  max-width:940px;
+  margin:28px auto 60px;
+  padding:0 20px;
+}
+
+/* ===== HEADER ===== */
+header{
+  text-align:center;
+  padding:38px 24px 30px;
+  border:1px solid rgba(201,162,39,0.35);
+  border-radius:14px;
+  background:linear-gradient(180deg, rgba(201,162,39,0.06), transparent 60%);
+  position:relative;
+  overflow:hidden;
+}
+header::after{
+  content:"";
+  position:absolute; left:50%; bottom:0; transform:translateX(-50%);
+  width:180px; height:2px;
+  background:linear-gradient(90deg, transparent, var(--or), transparent);
+}
+.kicker{
+  display:inline-block;
+  letter-spacing:4px;
+  font-size:11px;
+  text-transform:uppercase;
+  color:var(--or-clair);
+  border:1px solid rgba(201,162,39,0.45);
+  border-radius:999px;
+  padding:6px 16px;
+  margin-bottom:16px;
+}
+h1{
+  font-size:clamp(26px,4.6vw,42px);
+  letter-spacing:1px;
+  line-height:1.15;
+}
+h1 span{color:var(--or)}
+.subtitle{
+  margin-top:12px;
+  color:rgba(255,255,255,0.65);
+  font-size:15px;
+}
+.deco-glass{
+  display:block;
+  margin:0 auto 14px;
+  filter:drop-shadow(0 0 14px rgba(201,162,39,0.4));
+}
+
+/* ===== PROGRESSION ===== */
+.progress-wrap{
+  position:sticky;
+  top:0;
+  z-index:5;
+  background:rgba(20,17,15,0.92);
+  backdrop-filter:blur(4px);
+  border-bottom:1px solid rgba(201,162,39,0.25);
+  padding:10px 20px;
+  margin:26px -20px 0;
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+.progress-label{
+  font-size:12px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:var(--or-clair);
+  white-space:nowrap;
+}
+.progress-bar{
+  flex:1;
+  height:6px;
+  background:rgba(255,255,255,0.08);
+  border-radius:99px;
+  overflow:hidden;
+}
+.progress-fill{
+  height:100%;
+  width:0%;
+  background:linear-gradient(90deg, var(--or), var(--or-clair));
+  border-radius:99px;
+  transition:width .5s ease;
+}
+.progress-count{
+  font-size:13px;
+  color:var(--blanc);
+  min-width:34px;
+  text-align:right;
+}
+
+/* ===== TIMELINE ===== */
+.timeline{
+  position:relative;
+  margin-top:44px;
+  padding-bottom:10px;
+}
+.timeline::before{
+  content:"";
+  position:absolute;
+  left:50%; top:0; bottom:0;
+  width:2px;
+  transform:translateX(-50%);
+  background:linear-gradient(180deg, transparent, rgba(201,162,39,0.55) 6%, rgba(201,162,39,0.55) 94%, transparent);
+}
+.event{
+  position:relative;
+  width:50%;
+  padding:0 44px 54px;
+  opacity:0;
+  transform:translateY(28px);
+  transition:opacity .6s ease, transform .6s ease;
+}
+.event.visible{opacity:1;transform:translateY(0)}
+.event:nth-child(odd){left:0;text-align:right}
+.event:nth-child(even){left:50%;text-align:left}
+
+/* pastille sur la ligne */
+.event .node{
+  position:absolute;
+  top:6px;
+  width:52px;height:52px;
+  border-radius:50%;
+  background:var(--noir);
+  border:2px solid var(--or);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  transition:box-shadow .3s, transform .3s, background .3s;
+  z-index:2;
+}
+.event:nth-child(odd) .node{right:-26px}
+.event:nth-child(even) .node{left:-26px}
+.event .node svg{width:26px;height:26px}
+.event .node:hover{transform:scale(1.12);box-shadow:0 0 18px rgba(201,162,39,0.55)}
+.event.explored .node{background:var(--or)}
+.event.explored .node svg *{stroke:var(--noir)}
+.event.explored .node svg .fill{fill:var(--noir)}
+
+.card{
+  display:inline-block;
+  width:100%;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(201,162,39,0.35);
+  border-radius:12px;
+  padding:20px 22px;
+  cursor:pointer;
+  transition:transform .3s, box-shadow .3s, border-color .3s;
+  text-align:left;
+}
+.card:hover{
+  transform:translateY(-3px);
+  border-color:var(--or);
+  box-shadow:0 10px 26px rgba(0,0,0,0.45), 0 0 16px rgba(201,162,39,0.18);
+}
+.date{
+  font-size:22px;
+  font-weight:bold;
+  color:var(--or);
+  letter-spacing:1px;
+}
+.card h2{
+  font-size:16.5px;
+  margin-top:6px;
+  line-height:1.35;
+  color:var(--blanc);
+}
+.hint{
+  margin-top:10px;
+  font-size:12px;
+  color:rgba(227,199,102,0.8);
+  letter-spacing:1px;
+  text-transform:uppercase;
+}
+.details{
+  max-height:0;
+  overflow:hidden;
+  transition:max-height .55s ease, margin .4s ease;
+}
+.event.open .details{max-height:420px;margin-top:14px}
+.details p{
+  font-size:14px;
+  line-height:1.65;
+  color:rgba(255,255,255,0.85);
+  border-top:1px solid rgba(201,162,39,0.25);
+  padding-top:14px;
+}
+.details .anecdote{
+  margin-top:10px;
+  padding:10px 14px;
+  border-left:3px solid var(--or);
+  background:rgba(201,162,39,0.07);
+  font-size:13px;
+  border-radius:0 8px 8px 0;
+  color:var(--or-clair);
+}
+.event.open .hint .txt-open{display:none}
+.event .hint .txt-close{display:none}
+.event.open .hint .txt-close{display:inline}
+
+/* ===== FIN / RÉCAP ===== */
+.finale{
+  margin-top:26px;
+  border:1px solid rgba(201,162,39,0.35);
+  border-radius:14px;
+  padding:30px 26px;
+  text-align:center;
+  background:linear-gradient(180deg, transparent, rgba(201,162,39,0.05));
+  opacity:0;
+  transform:translateY(20px);
+  transition:opacity .6s, transform .6s;
+}
+.finale.visible{opacity:1;transform:translateY(0)}
+.finale h3{color:var(--or);font-size:20px;letter-spacing:1px;margin-bottom:12px}
+.finale p{font-size:14px;line-height:1.7;color:rgba(255,255,255,0.8);max-width:640px;margin:0 auto}
+.badge-done{
+  display:none;
+  margin:18px auto 0;
+  padding:10px 22px;
+  background:var(--vert-ok);
+  color:var(--blanc);
+  border-radius:999px;
+  font-size:14px;
+  letter-spacing:1px;
+  width:fit-content;
+}
+.finale.complete .badge-done{display:block;animation:pop .5s ease}
+@keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+
+.btn{
+  display:inline-block;
+  margin-top:20px;
+  background:var(--or);
+  color:var(--noir);
+  border:none;
+  font-weight:bold;
+  font-size:14px;
+  padding:12px 26px;
+  border-radius:999px;
+  cursor:pointer;
+  letter-spacing:1px;
+  transition:transform .25s, box-shadow .25s;
+}
+.btn:hover{transform:translateY(-2px);box-shadow:0 0 18px rgba(201,162,39,0.55)}
+
+footer{
+  margin-top:34px;
+  text-align:center;
+  font-size:11.5px;
+  letter-spacing:1.5px;
+  color:rgba(255,255,255,0.4);
+  text-transform:uppercase;
+}
+footer b{color:var(--or)}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width:760px){
+  .timeline::before{left:26px}
+  .event, .event:nth-child(odd), .event:nth-child(even){
+    width:100%;left:0;text-align:left;
+    padding:0 0 44px 66px;
+  }
+  .event:nth-child(odd) .node, .event:nth-child(even) .node{left:0;right:auto}
+  .date{font-size:19px}
+}
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <header>
+    <svg class="deco-glass" width="64" height="64" viewBox="0 0 64 64" fill="none">
+      <path d="M12 10h40L34 34v16" stroke="#C9A227" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M22 54h24" stroke="#C9A227" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M16 16h32" stroke="#E3C766" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="44" cy="9" r="3.5" stroke="#E3C766" stroke-width="2"/>
+      <line x1="41" y1="12" x2="35" y2="19" stroke="#E3C766" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <span class="kicker">CS Métiers du Bar · Culture du bar</span>
+    <h1>L'histoire du <span>cocktail</span></h1>
+    <p class="subtitle">Frise interactive — cliquez sur chaque époque pour découvrir son histoire</p>
+  </header>
+
+  <div class="progress-wrap">
+    <span class="progress-label">Exploration</span>
+    <div class="progress-bar"><div class="progress-fill" id="fill"></div></div>
+    <span class="progress-count"><span id="count">0</span>/6</span>
+  </div>
+
+  <div class="timeline" id="timeline">
+
+    <!-- 1. XVIIIe -->
+    <div class="event" data-id="1">
+      <div class="node" title="Explorer">
+        <svg viewBox="0 0 24 24" fill="none"><path class="fill" d="M9 3h6v5.5c0 1 .4 1.6 1 2.4 1.2 1.5 2 3 2 5.1 0 3-2.5 5-6 5s-6-2-6-5c0-2.1.8-3.6 2-5.1.6-.8 1-1.4 1-2.4V3z" stroke="#C9A227" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 3h8" stroke="#E3C766" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </div>
+      <div class="card">
+        <div class="date">XVIII<sup>e</sup> siècle</div>
+        <h2>Premiers mélanges alcoolisés documentés</h2>
+        <div class="details">
+          <p>Punchs, grogs et « slings » circulent dans les tavernes anglaises et les colonies américaines. On mélange déjà spiritueux, sucre, eau et épices — les ancêtres directs du cocktail moderne.</p>
+          <div class="anecdote">🍹 Le punch, rapporté des Indes par les marins anglais, se compose traditionnellement de 5 éléments : alcool, sucre, citron, eau, épices.</div>
+        </div>
+        <div class="hint"><span class="txt-open">▸ Cliquer pour explorer</span><span class="txt-close">▾ Refermer</span></div>
+      </div>
+    </div>
+
+    <!-- 2. 1806 -->
+    <div class="event" data-id="2">
+      <div class="node" title="Explorer">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 20h16M6 20V9l6-4 6 4v11" stroke="#C9A227" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 20v-5" stroke="#E3C766" stroke-width="1.8" stroke-linecap="round"/><path d="M9 12h6" stroke="#E3C766" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </div>
+      <div class="card">
+        <div class="date">1806</div>
+        <h2>Première définition écrite du mot « cocktail »</h2>
+        <div class="details">
+          <p>Un journal américain, <em>The Balance and Columbian Repository</em>, définit le cocktail comme une boisson stimulante composée de spiritueux, de sucre, d'eau et de bitters. Cette formule fonde encore aujourd'hui la structure de l'Old Fashioned.</p>
+          <div class="anecdote">📜 Spiritueux + sucre + eau + bitters : la définition de 1806 reste la base des cocktails dits « ancestraux ».</div>
+        </div>
+        <div class="hint"><span class="txt-open">▸ Cliquer pour explorer</span><span class="txt-close">▾ Refermer</span></div>
+      </div>
+    </div>
+
+    <!-- 3. 1862 -->
+    <div class="event" data-id="3">
+      <div class="node" title="Explorer">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3V4z" stroke="#C9A227" stroke-width="1.8" stroke-linejoin="round"/><path d="M5 4a3 3 0 000 6h11" stroke="#C9A227" stroke-width="1.8"/><path d="M12 13l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.2-2.4 1.2.5-2.6-1.9-1.8 2.6-.4L12 13z" stroke="#E3C766" stroke-width="1.4" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="card">
+        <div class="date">1862</div>
+        <h2>Jerry Thomas publie <em>How to Mix Drinks</em></h2>
+        <div class="details">
+          <p>Premier livre de cocktails de l'histoire. Jerry Thomas, surnommé « le professeur », codifie les recettes et fait du barman un véritable artisan du spectacle. Son Blue Blazer — un whisky enflammé passé d'un mug à l'autre — devient légendaire.</p>
+          <div class="anecdote">⭐ Jerry Thomas est considéré comme le père de la mixologie américaine : c'est la naissance du métier de bartender.</div>
+        </div>
+        <div class="hint"><span class="txt-open">▸ Cliquer pour explorer</span><span class="txt-close">▾ Refermer</span></div>
+      </div>
+    </div>
+
+    <!-- 4. Prohibition -->
+    <div class="event" data-id="4">
+      <div class="node" title="Explorer">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#C9A227" stroke-width="1.8"/><line x1="5.6" y1="5.6" x2="18.4" y2="18.4" stroke="#E3C766" stroke-width="1.8"/><path d="M9.5 9.5v-2h5v2M9.5 14.5h5" stroke="#C9A227" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </div>
+      <div class="card">
+        <div class="date">1920 – 1933</div>
+        <h2>Prohibition aux États-Unis</h2>
+        <div class="details">
+          <p>L'alcool est interdit : les bars clandestins (<em>speakeasies</em>) fleurissent et les barmen redoublent de créativité pour masquer le goût d'alcools de contrebande médiocres. Beaucoup s'exilent — vers l'Europe et Cuba — et exportent le savoir-faire américain dans le monde entier.</p>
+          <div class="anecdote">🚪 Paradoxe fondateur : l'interdiction de l'alcool a provoqué une explosion de créativité et la diffusion mondiale de la culture cocktail.</div>
+        </div>
+        <div class="hint"><span class="txt-open">▸ Cliquer pour explorer</span><span class="txt-close">▾ Refermer</span></div>
+      </div>
+    </div>
+
+    <!-- 5. Tiki -->
+    <div class="event" data-id="5">
+      <div class="node" title="Explorer">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 21c-3 0-5-4-5-9s2-9 5-9 5 4 5 9-2 9-5 9z" stroke="#C9A227" stroke-width="1.8"/><path d="M9 9h6M9 13h6" stroke="#E3C766" stroke-width="1.6" stroke-linecap="round"/><path d="M12 3c2-1.5 4-2 6-1.5" stroke="#E3C766" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </div>
+      <div class="card">
+        <div class="date">Années 1950 – 70</div>
+        <h2>Âge d'or des cocktails tiki et exotiques</h2>
+        <div class="details">
+          <p>Dans le sillage de Don the Beachcomber et Trader Vic, la vague tiki déferle : rhums, jus tropicaux, sirops maison, mugs sculptés et décors polynésiens. Mai Tai, Zombie et Piña Colada incarnent l'évasion et le spectaculaire.</p>
+          <div class="anecdote">🗿 Le tiki, c'est plus qu'un cocktail : un univers complet — verrerie, décor, garnitures — qui fait du bar une destination.</div>
+        </div>
+        <div class="hint"><span class="txt-open">▸ Cliquer pour explorer</span><span class="txt-close">▾ Refermer</span></div>
+      </div>
+    </div>
+
+    <!-- 6. 2000s -->
+    <div class="event" data-id="6">
+      <div class="node" title="Explorer">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M9 3l-2 4v3a5 5 0 0010 0V7l-2-4H9z" stroke="#C9A227" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7h10" stroke="#E3C766" stroke-width="1.6"/><path d="M12 15v6M9 21h6" stroke="#C9A227" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </div>
+      <div class="card">
+        <div class="date">Années 2000</div>
+        <h2>Renaissance de la mixologie</h2>
+        <div class="details">
+          <p>Retour aux classiques et aux recettes historiques, produits frais, glace de qualité, techniques modernes (fat wash, clarification, sous-vide…). Le bartender devient un artisan-créateur reconnu, et les bars à cocktails entrent dans les classements mondiaux.</p>
+          <div class="anecdote">🔬 La mixologie contemporaine marie l'héritage de Jerry Thomas et les techniques issues de la gastronomie moderne.</div>
+        </div>
+        <div class="hint"><span class="txt-open">▸ Cliquer pour explorer</span><span class="txt-close">▾ Refermer</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="finale" id="finale">
+    <h3>Deux siècles et demi d'histoire dans un verre</h3>
+    <p>Du punch des tavernes du XVIII<sup>e</sup> siècle à la mixologie moléculaire, le cocktail raconte l'histoire des échanges, des interdits et de la créativité des barmen. Chaque grand classique que vous servirez porte une part de cet héritage.</p>
+    <div class="badge-done">✔ Frise entièrement explorée — bravo !</div>
+    <button class="btn" onclick="resetAll()">↺ Recommencer l'exploration</button>
+  </div>
+
+  <footer>CMA Formation Hauts-de-France · <b>CS Métiers du Bar</b> · Culture du bar</footer>
+</div>
+
+<script>
+const events = document.querySelectorAll('.event');
+const fill = document.getElementById('fill');
+const count = document.getElementById('count');
+const finale = document.getElementById('finale');
+const explored = new Set();
+
+// Apparition au scroll
+const io = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('visible'); io.unobserve(e.target);} });
+},{threshold:0.2});
+events.forEach(ev=>io.observe(ev));
+io.observe(finale);
+
+// Interaction ouverture / progression
+events.forEach(ev=>{
+  const toggle = ()=>{
+    const isOpen = ev.classList.toggle('open');
+    if(isOpen){
+      ev.classList.add('explored');
+      explored.add(ev.dataset.id);
+      updateProgress();
+    }
+  };
+  ev.querySelector('.card').addEventListener('click', toggle);
+  ev.querySelector('.node').addEventListener('click', toggle);
+});
+
+function updateProgress(){
+  const n = explored.size;
+  count.textContent = n;
+  fill.style.width = (n/6*100)+'%';
+  if(n===6){ finale.classList.add('complete'); }
+}
+
+function resetAll(){
+  explored.clear();
+  events.forEach(ev=>ev.classList.remove('open','explored'));
+  finale.classList.remove('complete');
+  updateProgress();
+  document.querySelector('.stage').scrollIntoView({behavior:'smooth'});
+}
+</script>
+</body>
+</html>
